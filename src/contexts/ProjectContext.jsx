@@ -18,7 +18,7 @@ export const ProjectProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  // Charger les projets de l'utilisateur - MODE DEMO
+  // Charger les projets de l'utilisateur
   const loadProjects = async () => {
     if (!user) {
       setProjects([]);
@@ -27,11 +27,21 @@ export const ProjectProvider = ({ children }) => {
     }
 
     try {
-      // Mode démo - projets stockés localement
-      const savedProjects = localStorage.getItem('demo_projects');
-      if (savedProjects) {
-        setProjects(JSON.parse(savedProjects));
-      }
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Parser les phases depuis JSON
+      const formattedProjects = data.map(project => ({
+        ...project,
+        phases: JSON.parse(project.phases || '[]')
+      }));
+
+      setProjects(formattedProjects);
     } catch (error) {
       console.error('Erreur lors du chargement des projets:', error);
     } finally {
@@ -43,18 +53,16 @@ export const ProjectProvider = ({ children }) => {
     loadProjects();
   }, [user]);
 
-  // Créer un nouveau projet - MODE DEMO
+  // Créer un nouveau projet
   const createProject = async (projectData) => {
     if (!user) return null;
 
     try {
       const newProject = {
         ...projectData,
-        id: Date.now(),
         user_id: user.id,
         status: 'new',
         progress: 0,
-        created_at: new Date().toISOString(),
         phases: phases.map(phase => ({
           ...phase,
           checklist: phase.checklist.map(item => ({
@@ -67,34 +75,62 @@ export const ProjectProvider = ({ children }) => {
         }))
       };
 
-      const updatedProjects = [newProject, ...projects];
-      setProjects(updatedProjects);
-      
-      // Sauvegarder en localStorage
-      localStorage.setItem('demo_projects', JSON.stringify(updatedProjects));
-      
-      return newProject;
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([{
+          ...newProject,
+          phases: JSON.stringify(newProject.phases)
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const formattedProject = {
+        ...data,
+        phases: JSON.parse(data.phases)
+      };
+
+      setProjects(prev => [formattedProject, ...prev]);
+      return formattedProject;
     } catch (error) {
       console.error('Erreur lors de la création du projet:', error);
       throw error;
     }
   };
 
-  // Mettre à jour un projet - MODE DEMO
+  // Mettre à jour un projet
   const updateProject = async (projectId, updates) => {
     try {
-      const updatedProjects = projects.map(project => 
-        project.id === projectId 
-          ? { ...project, ...updates, updated_at: new Date().toISOString() }
-          : project
-      );
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
 
-      setProjects(updatedProjects);
-      
-      // Sauvegarder en localStorage
-      localStorage.setItem('demo_projects', JSON.stringify(updatedProjects));
+      // Si on met à jour les phases, les sérialiser en JSON
+      if (updates.phases) {
+        updateData.phases = JSON.stringify(updates.phases);
+      }
 
-      return updatedProjects.find(p => p.id === projectId);
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', projectId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const formattedProject = {
+        ...data,
+        phases: JSON.parse(data.phases || '[]')
+      };
+
+      setProjects(prev => prev.map(project => 
+        project.id === projectId ? formattedProject : project
+      ));
+
+      return formattedProject;
     } catch (error) {
       console.error('Erreur lors de la mise à jour du projet:', error);
       throw error;

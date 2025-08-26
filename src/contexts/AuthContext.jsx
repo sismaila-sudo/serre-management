@@ -18,9 +18,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Vérifier la session existante
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Erreur session:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getSession();
@@ -38,15 +43,16 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, userData = {}) => {
     try {
-      // Mode démo - simulation d'inscription réussie
-      const mockUser = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signUp({
         email,
-        user_metadata: userData
-      };
+        password,
+        options: {
+          data: userData
+        }
+      });
       
-      setUser(mockUser);
-      return { data: { user: mockUser }, error: null };
+      if (error) throw error;
+      return { data, error: null };
     } catch (error) {
       return { data: null, error };
     }
@@ -54,15 +60,13 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     try {
-      // Mode démo - simulation de connexion réussie
-      const mockUser = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        user_metadata: { first_name: 'Demo', last_name: 'User' }
-      };
+        password
+      });
       
-      setUser(mockUser);
-      return { data: { user: mockUser }, error: null };
+      if (error) throw error;
+      return { data, error: null };
     } catch (error) {
       return { data: null, error };
     }
