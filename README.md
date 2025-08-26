@@ -187,3 +187,5 @@ MIT License - Libre d'utilisation
 ---
 
 **Fait avec ❤️ pour l'agriculture moderne** 🌱
+
+*Projet migré vers Supabase Pro - Décembre 2024*
