@@ -43,6 +43,9 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, userData = {}) => {
     try {
+      console.log('🚀 Tentative inscription:', { email, userData });
+      console.log('🔧 Supabase instance:', supabase);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -51,9 +54,15 @@ export const AuthProvider = ({ children }) => {
         }
       });
       
-      if (error) throw error;
+      console.log('📧 Résultat inscription:', { data, error });
+      
+      if (error) {
+        console.error('❌ Erreur Supabase:', error);
+        throw error;
+      }
       return { data, error: null };
     } catch (error) {
+      console.error('❌ Erreur complète:', error);
       return { data: null, error };
     }
   };
