@@ -1,0 +1,1017 @@
+import React, { useState, useEffect } from 'react';
+import { Camera, MapPin, FileText, Users, Calendar, CheckCircle2, Circle, Plus, ArrowRight, Home, Settings, Download, User, Building, Thermometer, Mountain, X, ArrowLeft } from 'lucide-react';
+
+const GreenhouseApp = () => {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [projects, setProjects] = useState([]);
+  const [currentProject, setCurrentProject] = useState(null);
+  const [currentPhase, setCurrentPhase] = useState(null);
+
+  // Types de données
+  const serreTypes = [
+    { value: 'tunnel', label: 'Serre Tunnel', icon: '🏠' },
+    { value: 'multi-chapelle', label: 'Multi-Chapelle', icon: '🏢' },
+    { value: 'verre', label: 'Serre en Verre', icon: '🪟' },
+    { value: 'polycarbonate', label: 'Polycarbonate', icon: '🔳' }
+  ];
+
+  const soilTypes = [
+    { value: 'argileux', label: 'Sol Argileux', icon: '🟤', desc: 'Retient l\'eau, compact' },
+    { value: 'sablonneux', label: 'Sol Sablonneux', icon: '🟡', desc: 'Drainant, léger' },
+    { value: 'limoneux', label: 'Sol Limoneux', icon: '🟫', desc: 'Fertile, équilibré' },
+    { value: 'rocheux', label: 'Sol Rocheux', icon: '⚪', desc: 'Dur, drainage naturel' }
+  ];
+
+  const climateTypes = [
+    { value: 'semi-aride', label: 'Semi-aride', icon: '🌵', desc: 'Sec, chaud (Sénégal)' },
+    { value: 'tropical-humide', label: 'Tropical Humide', icon: '🌴', desc: 'Chaud et humide' },
+    { value: 'tempere', label: 'Tempéré', icon: '🌲', desc: 'Saisons marquées' }
+  ];
+
+  // Images de référence pour les étapes importantes
+  const referenceImages = {
+    0: {
+      title: "Terrain bien préparé",
+      description: "Site débroussaillé, sans obstacles, pente légère de 1-2%",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 150 Q200 140 350 130" stroke="#8B7355" stroke-width="4" fill="none"/>
+        <rect x="60" y="145" width="280" height="10" fill="#90EE90" opacity="0.7"/>
+        <circle cx="80" cy="120" r="15" fill="#228B22"/>
+        <rect x="78" y="120" width="4" height="20" fill="#8B4513"/>
+        <text x="200" y="180" text-anchor="middle" fill="#333" font-size="14">✓ Zone nette, pente 1-2%</text>
+      </svg>`
+    },
+    1: {
+      title: "Nivellement correct",
+      description: "Pente uniforme de 1-2%, pas de creux ni bosses, contrôle au niveau laser",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <line x1="50" y1="100" x2="350" y2="95" stroke="#FF0000" stroke-width="2" stroke-dasharray="5,5"/>
+        <path d="M50 120 L350 115" stroke="#8B7355" stroke-width="6" fill="none"/>
+        <rect x="180" y="90" width="40" height="8" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+        <circle cx="200" cy="94" r="2" fill="#000"/>
+        <text x="200" y="85" text-anchor="middle" fill="#333" font-size="12">Niveau</text>
+        <text x="200" y="180" text-anchor="middle" fill="#333" font-size="14">Pente uniforme 1-2%</text>
+      </svg>`
+    },
+    2: {
+      title: "Fondations - Plots béton",
+      description: "Profondeur 50-80cm, alignement parfait, espacement selon type de serre",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <rect x="80" y="120" width="20" height="60" fill="#808080" stroke="#666"/>
+        <rect x="180" y="120" width="20" height="60" fill="#808080" stroke="#666"/>
+        <rect x="280" y="120" width="20" height="60" fill="#808080" stroke="#666"/>
+        <line x1="70" y1="130" x2="310" y2="130" stroke="#FF0000" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="140" y="110" text-anchor="middle" fill="#333" font-size="12">2m</text>
+        <text x="240" y="110" text-anchor="middle" fill="#333" font-size="12">2m</text>
+        <rect x="0" y="180" width="400" height="20" fill="#8B7355"/>
+        <text x="200" y="200" text-anchor="middle" fill="#333" font-size="14">Profondeur: 50-80cm selon zone venteuse</text>
+      </svg>`
+    },
+    3: {
+      title: "Assemblage ossature",
+      description: "Vérification des diagonales pour l'équerrage - les 2 diagonales doivent être égales",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#FF0000"/>
+          </marker>
+        </defs>
+        <rect x="100" y="80" width="200" height="100" fill="none" stroke="#4169E1" stroke-width="3"/>
+        <line x1="100" y1="80" x2="300" y2="180" stroke="#FF0000" stroke-width="2" stroke-dasharray="5,5"/>
+        <line x1="300" y1="80" x2="100" y2="180" stroke="#FF0000" stroke-width="2" stroke-dasharray="5,5"/>
+        <circle cx="100" cy="80" r="3" fill="#FF0000"/>
+        <circle cx="300" cy="80" r="3" fill="#FF0000"/>
+        <circle cx="100" cy="180" r="3" fill="#FF0000"/>
+        <circle cx="300" cy="180" r="3" fill="#FF0000"/>
+        <text x="200" y="50" text-anchor="middle" fill="#333" font-size="14">Les 2 diagonales = même longueur</text>
+        <text x="200" y="200" text-anchor="middle" fill="#333" font-size="12">Vérification équerrage</text>
+      </svg>`
+    },
+    4: {
+      title: "Installation couverture",
+      description: "Tension uniforme, pas de poches d'eau, fixations solides avec clips anti-déchirure",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowblue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#4169E1"/>
+          </marker>
+        </defs>
+        <path d="M50 150 Q200 50 350 150" stroke="#4169E1" stroke-width="3" fill="none"/>
+        <path d="M50 150 Q200 55 350 150" stroke="none" fill="#E6F3FF" opacity="0.7"/>
+        <circle cx="80" cy="135" r="3" fill="#FFD700"/>
+        <circle cx="150" cy="85" r="3" fill="#FFD700"/>
+        <circle cx="250" cy="85" r="3" fill="#FFD700"/>
+        <circle cx="320" cy="135" r="3" fill="#FFD700"/>
+        <circle cx="120" cy="110" r="2" fill="#4169E1"/>
+        <path d="M120 112 L130 130" stroke="#4169E1" stroke-width="1" marker-end="url(#arrowblue)"/>
+        <text x="200" y="180" text-anchor="middle" fill="#333" font-size="14">✓ Évacuation eau, tension uniforme</text>
+      </svg>`
+    },
+    5: {
+      title: "Ventilation adaptée au climat",
+      description: "Ouvertures selon le climat : naturelle (semi-aride), forcée (tropical humide)",
+      svg: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowcyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#00CED1"/>
+          </marker>
+        </defs>
+        <path d="M100 150 Q200 80 300 150" stroke="#4169E1" stroke-width="3" fill="#E6F3FF" opacity="0.3"/>
+        <line x1="100" y1="150" x2="300" y2="150" stroke="#4169E1" stroke-width="3"/>
+        <rect x="110" y="140" width="30" height="20" fill="#87CEEB" stroke="#4169E1"/>
+        <rect x="260" y="140" width="30" height="20" fill="#87CEEB" stroke="#4169E1"/>
+        <path d="M50 145 L110 145" stroke="#00CED1" stroke-width="2" marker-end="url(#arrowcyan)"/>
+        <path d="M290 145 L350 145" stroke="#00CED1" stroke-width="2" marker-end="url(#arrowcyan)"/>
+        <text x="200" y="120" text-anchor="middle" fill="#FF4500" font-size="16">🌡️</text>
+        <text x="200" y="180" text-anchor="middle" fill="#333" font-size="14">Ventilation croisée efficace</text>
+      </svg>`
+    }
+  };
+
+  // Phases de construction
+  const phases = [
+    {
+      id: 0,
+      name: 'Préparation du site',
+      icon: '🏗️',
+      description: 'Préparation et nettoyage du terrain',
+      hasReferenceImages: true,
+      technicalInfo: {
+        general: 'Choisir un site plat ou pente douce (1–2 %)',
+        details: 'Éviter zones trop plates (stagnation d\'eau) ou trop pentues (>12 %)',
+        preservation: 'Préserver la couche superficielle fertile'
+      },
+      checklist: [
+        'Vérification plan topographique',
+        'Débroussaillage, coupe arbustes',
+        'Retrait pierres et débris',
+        'Photos du terrain nettoyé'
+      ]
+    },
+    {
+      id: 1,
+      name: 'Nivellement du terrain',
+      icon: '📐',
+      description: 'Mise à niveau et préparation du sol',
+      hasReferenceImages: true,
+      technicalInfo: {
+        slope: 'Pente idéale : 1–2 % (1–2 m par 100 m)',
+        avoidance: 'Éviter pentes >12 % (préférer terrassement)',
+        soilTreatment: {
+          argileux: 'Ameublir + compost',
+          sablonneux: 'Enrichir avec matière organique',
+          limoneux: 'Léger amendement si nécessaire',
+          rocheux: 'Préparation plots béton'
+        }
+      },
+      checklist: [
+        'Vérification de la pente avec niveau/laser',
+        'Uniformisation creux et bosses',
+        'Ajout de compost/amendements selon type de sol',
+        'Photo du terrain nivelé'
+      ]
+    },
+    {
+      id: 2,
+      name: 'Fondations / Ancrage',
+      icon: '🏗️',
+      description: 'Installation des fondations',
+      hasReferenceImages: true,
+      technicalInfo: {
+        depth: 'Profondeur standard : 50–80 cm',
+        soilAdaptation: {
+          rocheux: 'Plots superficiels avec scellement béton',
+          sablonneux: 'Renforts de fixation nécessaires'
+        },
+        spacing: {
+          tunnel: '2 m entre plots',
+          'multi-chapelle': '3–4 m entre plots'
+        }
+      },
+      checklist: [
+        'Tranchées ou plots coulés',
+        'Vérification niveau et alignement',
+        'Photos des fondations',
+        'Contrôle profondeur selon type de sol'
+      ]
+    },
+    {
+      id: 3,
+      name: 'Ossature',
+      icon: '⚙️',
+      description: 'Montage de la structure',
+      hasReferenceImages: true,
+      technicalInfo: {
+        materials: 'Acier galvanisé (recommandé), aluminium (léger)',
+        spacing: 'Espacement arcs serre tunnel : 1.5–2 m',
+        assembly: 'Boulonnage serré au couple requis',
+        verification: 'Vérifier orthogonalité avec mesure diagonales'
+      },
+      checklist: [
+        'Montage profilés/arcs',
+        'Serrage des ancrages',
+        'Contrôle des diagonales',
+        'Photos ossature'
+      ]
+    },
+    {
+      id: 4,
+      name: 'Couverture',
+      icon: '🏠',
+      description: 'Installation de la couverture',
+      hasReferenceImages: true,
+      technicalInfo: {
+        materials: {
+          'semi-aride': 'Polyéthylène résistant UV recommandé',
+          'tropical-humide': 'Polycarbonate pour résister à l\'humidité',
+          'tempere': 'Verre ou polycarbonate selon budget'
+        },
+        installation: 'Tension uniforme, sans poches d\'eau',
+        fixation: 'Clips/rails anti-déchirure'
+      },
+      checklist: [
+        'Type de recouvrement installé',
+        'Étanchéité des jonctions',
+        'Tests infiltration eau',
+        'Photos couverture'
+      ]
+    },
+    {
+      id: 5,
+      name: 'Équipements',
+      icon: '🔧',
+      description: 'Installation des équipements techniques',
+      hasReferenceImages: true,
+      technicalInfo: {
+        ventilation: {
+          'semi-aride': 'Ventilation naturelle adaptée',
+          'tropical-humide': 'Ventilation forcée recommandée',
+          'tempere': 'Ventilation mixte'
+        },
+        irrigation: {
+          sablonneux: 'Goutte-à-goutte recommandé',
+          argileux: 'Aspersion possible'
+        }
+      },
+      checklist: [
+        'Test ouverture/fermeture ventilation',
+        'Débit irrigation vérifié',
+        'Installation capteurs température/humidité',
+        'Photos équipements'
+      ]
+    },
+    {
+      id: 6,
+      name: 'Finitions & Sécurité',
+      icon: '🛡️',
+      description: 'Finitions et mise en sécurité',
+      hasReferenceImages: false,
+      technicalInfo: {
+        doors: 'Portes fermant correctement',
+        signage: 'Signalétique sorties de secours',
+        electrical: 'Électricité protégée (disjoncteurs)',
+        safety: 'Extincteurs si installations électriques'
+      },
+      checklist: [
+        'Vérification portes et trappes',
+        'Mise en place extincteurs',
+        'Formation opérateurs',
+        'Photos finitions'
+      ]
+    },
+    {
+      id: 7,
+      name: 'Réception / Contrôle final',
+      icon: '✅',
+      description: 'Contrôle final et réception',
+      hasReferenceImages: false,
+      technicalInfo: {
+        inspection: 'Vérification visuelle complète',
+        tests: 'Test étanchéité pluie',
+        systems: 'Vérification systèmes électriques/irrigation',
+        signature: 'Signature client + installateur'
+      },
+      checklist: [
+        'Inspection finale',
+        'Non-conformités listées',
+        'Bon de réception signé',
+        'Export PDF rapport'
+      ]
+    }
+  ];
+
+  // Composant Dashboard
+  const Dashboard = () => (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="bg-green-100 p-3 rounded-lg">
+                <Building className="h-8 w-8 text-green-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Gestion Serres</h1>
+                <p className="text-gray-600">Assistant Technique et Contrôle Qualité</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setCurrentView('newProject')}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Nouveau Projet</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-blue-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-600 font-medium">Projets Actifs</p>
+                  <p className="text-3xl font-bold text-blue-800">{projects.filter(p => p.status !== 'completed').length}</p>
+                </div>
+                <Building className="h-10 w-10 text-blue-600" />
+              </div>
+            </div>
+            <div className="bg-green-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-600 font-medium">Projets Terminés</p>
+                  <p className="text-3xl font-bold text-green-800">{projects.filter(p => p.status === 'completed').length}</p>
+                </div>
+                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              </div>
+            </div>
+            <div className="bg-orange-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-600 font-medium">En Cours</p>
+                  <p className="text-3xl font-bold text-orange-800">{projects.filter(p => p.status === 'in-progress').length}</p>
+                </div>
+                <Calendar className="h-10 w-10 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Liste des Projets</h2>
+          {projects.length === 0 ? (
+            <div className="text-center py-12">
+              <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg mb-4">Aucun projet créé</p>
+              <button
+                onClick={() => setCurrentView('newProject')}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Créer votre premier projet
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {projects.map(project => (
+                <div key={project.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-900">{project.name}</h3>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          project.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          project.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {project.status === 'completed' ? 'Terminé' :
+                           project.status === 'in-progress' ? 'En cours' : 'Nouveau'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4" />
+                          <span>{project.client}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{project.location}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Building className="h-4 w-4" />
+                          <span>{serreTypes.find(t => t.value === project.serreType)?.label}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Thermometer className="h-4 w-4" />
+                          <span>{climateTypes.find(t => t.value === project.climate)?.label}</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full" 
+                          style={{ width: `${project.progress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">Progression: {project.progress}%</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setCurrentProject(project);
+                        setCurrentView('project');
+                      }}
+                      className="ml-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                      <span>Ouvrir</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Composant Nouveau Projet
+  const NewProject = () => {
+    const [formData, setFormData] = useState({
+      name: '',
+      client: '',
+      location: '',
+      serreType: '',
+      soilType: '',
+      climate: ''
+    });
+
+    const handleSubmit = () => {
+      if (Object.values(formData).every(value => value !== '')) {
+        const newProject = {
+          id: Date.now(),
+          ...formData,
+          status: 'new',
+          progress: 0,
+          createdAt: new Date().toISOString(),
+          phases: phases.map(phase => ({
+            ...phase,
+            checklist: phase.checklist.map(item => ({
+              id: Date.now() + Math.random(),
+              text: item,
+              completed: false,
+              photos: [],
+              notes: ''
+            }))
+          }))
+        };
+        setProjects([...projects, newProject]);
+        setCurrentProject(newProject);
+        setCurrentView('project');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Nouveau Projet</h1>
+                <p className="text-gray-600 mt-2">Créez un nouveau projet de construction de serre</p>
+              </div>
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="text-gray-600 hover:text-gray-800 flex items-center space-x-2"
+              >
+                <Home className="h-5 w-5" />
+                <span>Retour</span>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom du projet</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Ex: Serre Maraîchage Dakar"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+                  <input
+                    type="text"
+                    value={formData.client}
+                    onChange={(e) => setFormData({...formData, client: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Nom du client"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Ville, Région, Pays"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Type de serre</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {serreTypes.map(type => (
+                    <button
+                      key={type.value}
+                      onClick={() => setFormData({...formData, serreType: type.value})}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        formData.serreType === type.value 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{type.icon}</div>
+                      <div className="font-medium text-gray-900">{type.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Type de sol</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {soilTypes.map(soil => (
+                    <button
+                      key={soil.value}
+                      onClick={() => setFormData({...formData, soilType: soil.value})}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        formData.soilType === soil.value 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{soil.icon}</div>
+                      <div className="font-medium text-gray-900">{soil.label}</div>
+                      <div className="text-sm text-gray-600">{soil.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Type de climat</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {climateTypes.map(climate => (
+                    <button
+                      key={climate.value}
+                      onClick={() => setFormData({...formData, climate: climate.value})}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        formData.climate === climate.value 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="text-2xl mb-2">{climate.icon}</div>
+                      <div className="font-medium text-gray-900">{climate.label}</div>
+                      <div className="text-sm text-gray-600">{climate.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-6">
+                <button
+                  onClick={handleSubmit}
+                  disabled={!Object.values(formData).every(value => value !== '')}
+                  className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  <span>Créer le projet</span>
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Vue principale du projet avec onglets en 2 colonnes
+  const ProjectView = () => {
+    if (!currentProject) return null;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* En-tête du projet */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="text-gray-600 hover:text-gray-800 flex items-center space-x-2"
+                >
+                  <Home className="h-5 w-5" />
+                  <span>Retour</span>
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{currentProject.name}</h1>
+                  <p className="text-gray-600">{currentProject.client} - {currentProject.location}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Progression globale</p>
+                  <p className="text-2xl font-bold text-green-600">{currentProject.progress}%</p>
+                </div>
+                <div className="w-32 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${currentProject.progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Onglets des phases en 2 colonnes */}
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Phases de Construction</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {phases.map((phase, index) => {
+                const phaseCompleted = currentProject.phases[index]?.checklist.every(item => item.completed) || false;
+                const completedItems = currentProject.phases[index]?.checklist.filter(item => item.completed).length || 0;
+                const totalItems = currentProject.phases[index]?.checklist.length || 0;
+                const phaseProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+                
+                return (
+                  <button
+                    key={phase.id}
+                    onClick={() => setCurrentPhase(phase.id)}
+                    className={`p-6 rounded-xl border-2 text-left transition-all transform hover:scale-105 hover:shadow-lg ${
+                      phaseCompleted
+                        ? 'border-green-500 bg-green-50'
+                        : phaseProgress > 0
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-3xl">{phase.icon}</span>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{phase.name}</h3>
+                          <p className="text-sm text-gray-600">{phase.description}</p>
+                        </div>
+                      </div>
+                      {phaseCompleted ? (
+                        <CheckCircle2 className="h-8 w-8 text-green-600 flex-shrink-0" />
+                      ) : phaseProgress > 0 ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span className="text-xs font-bold text-blue-600">{phaseProgress}%</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <Circle className="h-8 w-8 text-gray-400 flex-shrink-0" />
+                      )}
+                    </div>
+                    
+                    {phase.hasReferenceImages && (
+                      <div className="mb-4">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          📋 Guide visuel disponible
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">
+                        {completedItems}/{totalItems} éléments
+                      </span>
+                      <div className="w-20 bg-gray-200 rounded-full h-1">
+                        <div 
+                          className={`h-1 rounded-full transition-all duration-300 ${
+                            phaseCompleted ? 'bg-green-600' : 'bg-blue-600'
+                          }`}
+                          style={{ width: `${phaseProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Vue détaillée d'une phase
+  const PhaseDetailView = () => {
+    if (!currentProject || currentPhase === null) return null;
+
+    const phaseData = phases[currentPhase];
+    const projectPhaseData = currentProject.phases[currentPhase];
+    const completedItems = projectPhaseData?.checklist.filter(item => item.completed).length || 0;
+    const totalItems = projectPhaseData?.checklist.length || 0;
+    const phaseProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+    const toggleChecklistItem = (itemId) => {
+      const updatedProjects = projects.map(project => {
+        if (project.id === currentProject.id) {
+          const updatedPhases = [...project.phases];
+          updatedPhases[currentPhase].checklist = updatedPhases[currentPhase].checklist.map(item => 
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+          );
+          
+          // Calculer le progrès global
+          const totalChecklistItems = updatedPhases.reduce((sum, phase) => sum + phase.checklist.length, 0);
+          const completedChecklistItems = updatedPhases.reduce((sum, phase) => 
+            sum + phase.checklist.filter(item => item.completed).length, 0
+          );
+          const overallProgress = Math.round((completedChecklistItems / totalChecklistItems) * 100);
+          
+          return { 
+            ...project, 
+            phases: updatedPhases, 
+            progress: overallProgress,
+            status: overallProgress === 100 ? 'completed' : 'in-progress'
+          };
+        }
+        return project;
+      });
+      
+      setProjects(updatedProjects);
+      setCurrentProject(updatedProjects.find(p => p.id === currentProject.id));
+    };
+
+    const addNote = (itemId, note) => {
+      const updatedProjects = projects.map(project => {
+        if (project.id === currentProject.id) {
+          const updatedPhases = [...project.phases];
+          updatedPhases[currentPhase].checklist = updatedPhases[currentPhase].checklist.map(item => 
+            item.id === itemId ? { ...item, notes: note } : item
+          );
+          return { ...project, phases: updatedPhases };
+        }
+        return project;
+      });
+      
+      setProjects(updatedProjects);
+      setCurrentProject(updatedProjects.find(p => p.id === currentProject.id));
+    };
+
+    const addPhoto = (itemId) => {
+      const photo = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        location: "Coordonnées GPS simulées"
+      };
+      
+      const updatedProjects = projects.map(project => {
+        if (project.id === currentProject.id) {
+          const updatedPhases = [...project.phases];
+          updatedPhases[currentPhase].checklist = updatedPhases[currentPhase].checklist.map(item => 
+            item.id === itemId ? { ...item, photos: [...(item.photos || []), photo] } : item
+          );
+          return { ...project, phases: updatedPhases };
+        }
+        return project;
+      });
+      
+      setProjects(updatedProjects);
+      setCurrentProject(updatedProjects.find(p => p.id === currentProject.id));
+      
+      alert("📷 Photo ajoutée avec succès!\nHorodatage: " + new Date().toLocaleString());
+    };
+
+    const getTechnicalRecommendations = (phase) => {
+      const { soilType, climate, serreType } = currentProject;
+      let recommendations = [];
+      
+      if (phase.technicalInfo.soilTreatment && phase.technicalInfo.soilTreatment[soilType]) {
+        recommendations.push(`Sol ${soilType}: ${phase.technicalInfo.soilTreatment[soilType]}`);
+      }
+      
+      if (phase.technicalInfo.materials && phase.technicalInfo.materials[climate]) {
+        recommendations.push(`Climat ${climate}: ${phase.technicalInfo.materials[climate]}`);
+      }
+      
+      if (phase.technicalInfo.spacing && phase.technicalInfo.spacing[serreType]) {
+        recommendations.push(`Serre ${serreType}: ${phase.technicalInfo.spacing[serreType]}`);
+      }
+      
+      return recommendations;
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* En-tête de la phase */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setCurrentPhase(null)}
+                  className="text-gray-600 hover:text-gray-800 flex items-center space-x-2"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  <span>Retour aux phases</span>
+                </button>
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl">{phaseData.icon}</span>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">{phaseData.name}</h1>
+                    <p className="text-gray-600">{phaseData.description}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Progression phase</p>
+                  <p className="text-2xl font-bold text-blue-600">{phaseProgress}%</p>
+                </div>
+                <div className="w-32 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${phaseProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Guide visuel et informations techniques */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              {/* Guide visuel */}
+              {phaseData.hasReferenceImages && referenceImages[currentPhase] && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                    <span>📋</span>
+                    <span>Guide visuel</span>
+                  </h3>
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div 
+                      className="w-full h-48 mb-3 bg-white rounded border"
+                      dangerouslySetInnerHTML={{ __html: referenceImages[currentPhase].svg }}
+                    />
+                    <h4 className="font-semibold text-blue-800 mb-2">{referenceImages[currentPhase].title}</h4>
+                    <p className="text-sm text-blue-600">{referenceImages[currentPhase].description}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Informations techniques */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold text-gray-900">Informations techniques</h3>
+                
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">Généralités</h4>
+                  {Object.entries(phaseData.technicalInfo).map(([key, value]) => (
+                    typeof value === 'string' && (
+                      <p key={key} className="text-blue-700 text-sm mb-1">• {value}</p>
+                    )
+                  ))}
+                </div>
+
+                {/* Recommandations spécifiques */}
+                {getTechnicalRecommendations(phaseData).length > 0 && (
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 mb-2">Recommandations spécifiques</h4>
+                    {getTechnicalRecommendations(phaseData).map((rec, index) => (
+                      <p key={index} className="text-green-700 text-sm mb-1">• {rec}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Paramètres du projet */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-gray-800 mb-2">Paramètres du projet</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="font-medium">Serre:</span> {serreTypes.find(t => t.value === currentProject.serreType)?.label}</p>
+                    <p><span className="font-medium">Sol:</span> {soilTypes.find(t => t.value === currentProject.soilType)?.label}</p>
+                    <p><span className="font-medium">Climat:</span> {climateTypes.find(t => t.value === currentProject.climate)?.label}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Checklist</h3>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-600">{completedItems}/{totalItems}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {projectPhaseData?.checklist.map((item, index) => (
+                  <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <button
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className={`mt-1 flex-shrink-0 transition-colors ${
+                          item.completed ? 'text-green-600' : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                      >
+                        {item.completed ? (
+                          <CheckCircle2 className="h-6 w-6" />
+                        ) : (
+                          <Circle className="h-6 w-6" />
+                        )}
+                      </button>
+                      
+                      <div className="flex-1">
+                        <p className={`text-lg ${item.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                          {item.text}
+                        </p>
+                        
+                        {/* Zone photos */}
+                        <div className="mt-3">
+                          <div className="flex items-center space-x-4 mb-2">
+                            <button 
+                              onClick={() => addPhoto(item.id)}
+                              className="flex items-center space-x-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm transition-colors"
+                            >
+                              <Camera className="h-4 w-4" />
+                              <span>Prendre photo</span>
+                            </button>
+                            <div className="flex items-center space-x-2 text-gray-600 text-sm">
+                              <MapPin className="h-4 w-4" />
+                              <span>GPS auto</span>
+                            </div>
+                            {item.photos && item.photos.length > 0 && (
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                {item.photos.length} photo(s)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Affichage des photos */}
+                          {item.photos && item.photos.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                              {item.photos.map((photo, photoIndex) => (
+                                <div key={photo.id} className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                                  <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                                  <p className="text-xs text-gray-500">Photo {photoIndex + 1}</p>
+                                  <p className="text-xs text-gray-400">
+                                    {new Date(photo.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Zone notes */}
+                        <div className="mt-3">
+                          <textarea
+                            value={item.notes}
+                            onChange={(e) => addNote(item.id, e.target.value)}
+                            placeholder="Notes et observations..."
+                            className="w-full p-2 border border-gray-300 rounded text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            rows="2"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bouton de fermeture */}
+              <div className="flex justify-center mt-8 pt-6 border-t">
+                <button
+                  onClick={() => setCurrentPhase(null)}
+                  className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <span>Phase terminée</span>
+                  <CheckCircle2 className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Rendu principal
+  return (
+    <div>
+      {currentView === 'dashboard' && <Dashboard />}
+      {currentView === 'newProject' && <NewProject />}
+      {currentView === 'project' && currentPhase === null && <ProjectView />}
+      {currentView === 'project' && currentPhase !== null && <PhaseDetailView />}
+    </div>
+  );
+};
+
+export default GreenhouseApp;
