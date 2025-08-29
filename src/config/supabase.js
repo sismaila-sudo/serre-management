@@ -24,6 +24,6 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Configuration des tables
 export const TABLES = {
-  PROJECTS: 'projects',
+  PROJECTS: 'serre_projects',
   USERS: 'users'
 };
