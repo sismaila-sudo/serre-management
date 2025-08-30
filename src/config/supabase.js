@@ -13,12 +13,6 @@ if (!supabaseKey || supabaseKey === 'YOUR_SUPABASE_ANON_KEY') {
   console.error('❌ VITE_SUPABASE_ANON_KEY manquante ou invalide');
 }
 
-console.log('🔧 Supabase URL:', supabaseUrl);
-console.log('🔧 Supabase Key présente:', supabaseKey ? 'Oui' : 'Non');
-console.log('🔧 URL length:', supabaseUrl.length);
-console.log('🔧 Key length:', supabaseKey.length);
-console.log('🔧 URL type:', typeof supabaseUrl);
-console.log('🔧 Key type:', typeof supabaseKey);
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 

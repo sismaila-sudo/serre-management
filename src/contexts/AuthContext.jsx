@@ -43,23 +43,13 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, userData = {}) => {
     try {
-      console.log('🚀 Tentative inscription simple:', { email });
-      console.log('🔧 Supabase instance:', supabase);
-      
-      // Test d'inscription basique sans metadata
+      // Inscription basique sans metadata
       const { data, error } = await supabase.auth.signUp({
         email,
         password
       });
       
-      console.log('📧 Résultat inscription:', { data, error });
-      console.log('📧 User created:', data?.user?.id);
-      console.log('📧 Session:', data?.session);
-      
       if (error) {
-        console.error('❌ Erreur Supabase:', error);
-        console.error('❌ Error code:', error.status);
-        console.error('❌ Error message:', error.message);
         throw error;
       }
       return { data, error: null };
